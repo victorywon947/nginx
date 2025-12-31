@@ -1,8 +1,13 @@
-FROM nginx:stable
+FROM openjdk:8u141 AS int-build
+LABEL description="Java Application builder"
+RUN git clone https://github.com/iac-source/inbuilder.git
+WORKDIR inbuilder
+RUN chmod 700 mvnw
+RUN ./mvnw clean package
 
-LABEL Name=echo-ip Version=0.0.5
-COPY nginx.conf /etc/nginx/nginx.conf
-COPY cert.crt /etc/nginx/conf.d/cert.crt
-COPY cert.key /etc/nginx/conf.d/cert.key
-
-CMD ["nginx", "-g", "daemon off;"]
+FROM gcr.io/distroless/java:8
+LABEL description="Echo IP Java Application"
+EXPOSE 60434
+COPY --from=int-build inbuilder/target/app-in-host.jar /opt/app-in-image.jar
+WORKDIR /opt
+ENTRYPOINT [ "java", "-jar", "app-in-image.jar" ]
